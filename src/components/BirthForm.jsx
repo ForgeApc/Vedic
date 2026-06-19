@@ -29,9 +29,14 @@ export default function BirthForm({ onSubmit, isLoading }) {
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await fetch(`/api/charts/geocode?q=${encodeURIComponent(locationQuery)}`)
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&limit=5&addressdetails=1`
+        const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
         const data = await res.json()
-        setSuggestions(data.slice(0, 5))
+        setSuggestions(data.map(r => ({
+          display: r.display_name,
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+        })))
       } catch { setSuggestions([]) }
       setSearching(false)
     }, 500)
