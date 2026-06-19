@@ -5,15 +5,23 @@ import Starfield from './components/Starfield'
 import Home from './pages/Home'
 import AuthPage from './pages/AuthPage'
 import DashboardPage from './pages/DashboardPage'
-import { supabase } from './lib/supabase'
+import { supabase, supabaseConfigured } from './lib/supabase'
 
 export default function App() {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(supabaseConfigured)
 
   useEffect(() => {
+    if (!supabaseConfigured) return
+
+    const timeout = setTimeout(() => setLoading(false), 3000)
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
       setUser(session?.user ?? null)
+      setLoading(false)
+    }).catch(() => {
+      clearTimeout(timeout)
       setLoading(false)
     })
 
@@ -21,7 +29,7 @@ export default function App() {
       setUser(session?.user ?? null)
     })
 
-    return () => subscription.unsubscribe()
+    return () => { subscription.unsubscribe(); clearTimeout(timeout) }
   }, [])
 
   if (loading) return null
