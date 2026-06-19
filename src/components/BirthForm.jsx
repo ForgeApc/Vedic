@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useForm } from 'react-hook-form'
 import { MapPin, Clock, Calendar, User, Loader2 } from 'lucide-react'
 
@@ -19,35 +20,54 @@ export default function BirthForm({ onSubmit, isLoading }) {
   const [locationQuery, setLocationQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const [searching, setSearching] = useState(false)
+  const [noResults, setNoResults] = useState(false)
+  const [dropdownPos, setDropdownPos] = useState(null)
+  const inputRef = useRef(null)
   const debounceRef = useRef(null)
 
   const approximateTime = watch('approximateTime')
 
   useEffect(() => {
-    if (locationQuery.length < 3) { setSuggestions([]); return }
+    if (locationQuery.length < 3) { setSuggestions([]); setNoResults(false); return }
+    setNoResults(false)
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       setSearching(true)
+
+      // Position dropdown based on input element
+      if (inputRef.current) {
+        const rect = inputRef.current.getBoundingClientRect()
+        setDropdownPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width })
+      }
+
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&limit=5&addressdetails=1`
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationQuery)}&format=json&limit=6&addressdetails=1`
         const res = await fetch(url, { headers: { 'Accept-Language': 'en' } })
         const data = await res.json()
-        setSuggestions(data.map(r => ({
+        const mapped = data.map(r => ({
           display: r.display_name,
+          short: [r.address?.city || r.address?.town || r.address?.village || r.address?.county, r.address?.state, r.address?.country].filter(Boolean).join(', '),
           lat: parseFloat(r.lat),
           lng: parseFloat(r.lon),
-        })))
-      } catch { setSuggestions([]) }
+        }))
+        setSuggestions(mapped)
+        setNoResults(mapped.length === 0)
+      } catch {
+        setSuggestions([])
+        setNoResults(true)
+      }
       setSearching(false)
-    }, 500)
+    }, 400)
   }, [locationQuery])
 
   function selectLocation(s) {
-    setValue('location', s.display.split(',').slice(0, 3).join(', '))
+    const label = s.short || s.display.split(',').slice(0, 3).join(', ')
+    setValue('location', label)
     setValue('lat', s.lat)
     setValue('lng', s.lng)
-    setLocationQuery(s.display.split(',').slice(0, 3).join(', '))
+    setLocationQuery(label)
     setSuggestions([])
+    setNoResults(false)
   }
 
   const timezones = Intl.supportedValuesOf?.('timeZone') || [
@@ -122,41 +142,52 @@ export default function BirthForm({ onSubmit, isLoading }) {
       </div>
 
       {/* Location */}
-      <div className="relative">
+      <div>
         <label className="block text-sm font-medium text-slate-300 mb-1.5">
           <MapPin size={14} className="inline mr-1.5 text-amber-400" />
           Birth Location
         </label>
         <div className="relative">
           <input
+            ref={inputRef}
             value={locationQuery}
-            onChange={e => setLocationQuery(e.target.value)}
-            placeholder="City, Country (e.g. Mumbai, India)"
+            onChange={e => { setLocationQuery(e.target.value); setValue('location', ''); setValue('lat', ''); setValue('lng', '') }}
+            placeholder="Type a city name, e.g. Mumbai"
             className="input-field pr-8"
+            autoComplete="off"
           />
           {searching && (
             <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 animate-spin" />
           )}
         </div>
-        <input type="hidden" {...register('location', { required: 'Location is required' })} />
+        <input type="hidden" {...register('location', { required: true })} />
         <input type="hidden" {...register('lat', { required: true })} />
         <input type="hidden" {...register('lng', { required: true })} />
-        {errors.location && <p className="text-red-400 text-xs mt-1">Please select a location from the list</p>}
+        {errors.location && <p className="text-red-400 text-xs mt-1">Please select a location from the dropdown</p>}
+        {noResults && locationQuery.length >= 3 && !searching && (
+          <p className="text-slate-500 text-xs mt-1">No locations found — try a different city name</p>
+        )}
 
-        {suggestions.length > 0 && (
-          <ul className="absolute z-30 w-full mt-1 glass-card border border-white/20 overflow-hidden">
+        {/* Portal dropdown so it's never clipped by overflow:hidden parents */}
+        {suggestions.length > 0 && dropdownPos && createPortal(
+          <ul
+            style={{ position: 'absolute', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width, zIndex: 9999, background: '#1e1b4b' }}
+            className="rounded-xl border border-white/20 overflow-hidden shadow-2xl shadow-black/60"
+          >
             {suggestions.map((s, i) => (
               <li key={i}>
                 <button
                   type="button"
-                  onClick={() => selectLocation(s)}
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:bg-white/10 hover:text-amber-300 transition-colors border-b border-white/5 last:border-0"
+                  onMouseDown={e => { e.preventDefault(); selectLocation(s) }}
+                  className="w-full text-left px-4 py-3 text-sm text-slate-200 hover:bg-amber-500/20 hover:text-amber-300 transition-colors border-b border-white/10 last:border-0"
                 >
-                  {s.display.split(',').slice(0, 4).join(',')}
+                  <span className="font-medium">{s.short}</span>
+                  <span className="block text-xs text-slate-500 truncate mt-0.5">{s.display}</span>
                 </button>
               </li>
             ))}
-          </ul>
+          </ul>,
+          document.body
         )}
       </div>
 
