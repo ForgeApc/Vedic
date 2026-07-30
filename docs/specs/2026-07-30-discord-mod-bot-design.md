@@ -12,7 +12,7 @@ A Discord bot for a single-topic community server that:
 
 - **Runtime**: Node.js
 - **Discord**: discord.js v14
-- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`), model `claude-haiku-4-5-20251001` by default (fast/cheap, suitable for high-frequency classification) — overridable via env var for servers that want higher accuracy.
+- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`), model `claude-opus-5` by default — overridable via env var (e.g. to a cheaper/faster model) if an admin wants to trade accuracy for cost on a high-traffic server.
 - **Storage**: SQLite via `better-sqlite3` — single local file, no external DB service to run. Stores per-user offense history so counts survive bot restarts.
 
 ## Rules channel
@@ -74,7 +74,7 @@ Rules text is cached in memory only (not persisted) — cheap to re-read from Di
 Environment variables (`.env`, see `.env.example`):
 - `DISCORD_BOT_TOKEN`
 - `ANTHROPIC_API_KEY`
-- `MODERATION_MODEL` (optional, defaults to `claude-haiku-4-5-20251001`)
+- `MODERATION_MODEL` (optional, defaults to `claude-opus-5`)
 
 ## Out of scope for v1 (YAGNI)
 
