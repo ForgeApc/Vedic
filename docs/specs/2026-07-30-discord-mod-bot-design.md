@@ -67,6 +67,7 @@ Guild-scoped slash commands, registered on bot startup and on joining a new guil
 - `/strikes user:<member>` — shows the member's current strike count, when the last offense was, and when it resets to 0.
 - `/resetstrikes user:<member>` — clears a member's strike history back to zero.
 - `/refreshrules` — forces an immediate re-read of `#rules` instead of waiting for the next edit event.
+- `/addrole user:<member> role:<role>` / `/removerole user:<member> role:<role>` — restricted via `ManageRoles` instead of `ModerateMembers`. Both refuse to touch `@everyone` or integration-managed roles, and enforce role hierarchy on both sides: the invoker can't grant/remove a role at or above their own highest role (unless they're the guild owner), and the bot refuses if the target role is at or above its own highest role (Discord's API would reject it anyway — this gives a clear error instead of a silent failure).
 
 ## Data model (SQLite)
 

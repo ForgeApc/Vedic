@@ -16,8 +16,8 @@ for the full design.
 - **Q&A**: any message that looks like a question about the server's topic
   gets answered automatically — no mention or command needed.
 - Server admins/moderators are exempt from punishment.
-- **Admin commands**: `/strikes`, `/resetstrikes`, `/refreshrules` — restricted
-  to members with the Moderate Members permission.
+- **Admin commands**: `/strikes`, `/resetstrikes`, `/refreshrules` (require
+  Moderate Members), and `/addrole`, `/removerole` (require Manage Roles).
 
 ## Setup
 
@@ -27,7 +27,9 @@ for the full design.
    - Copy the bot token.
 2. **Invite it to your server** with the `bot` and `applications.commands`
    scopes, and these permissions: Read Messages/View Channels, Send Messages,
-   Moderate Members (timeout), Ban Members.
+   Moderate Members (timeout), Ban Members, Manage Roles.
+   For `/addrole` and `/removerole` to work on a given role, the bot's own
+   role must be positioned **above** that role in Server Settings > Roles.
 3. **Create a `#rules` channel** in your server. Write your server's rules
    and a description of what the server is about — the bot reads this
    channel's content as the source of truth for both moderation and Q&A.
