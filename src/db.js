@@ -28,6 +28,7 @@ const upsertStmt = db.prepare(`
   ON CONFLICT (guild_id, user_id)
   DO UPDATE SET strike_count = excluded.strike_count, last_offense_at = excluded.last_offense_at
 `);
+const deleteStmt = db.prepare("DELETE FROM offenses WHERE guild_id = ? AND user_id = ?");
 
 /**
  * Records a new offense for a user, applying the 30-day reset rule,
@@ -42,4 +43,14 @@ export function recordOffense(guildId, userId) {
 
   upsertStmt.run(guildId, userId, nextStrike, now);
   return nextStrike;
+}
+
+/** Returns { strike_count, last_offense_at } for a user, or null if clean. */
+export function getOffense(guildId, userId) {
+  return getStmt.get(guildId, userId) || null;
+}
+
+/** Clears a user's strike history. */
+export function resetOffense(guildId, userId) {
+  deleteStmt.run(guildId, userId);
 }

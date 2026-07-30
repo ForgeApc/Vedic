@@ -16,6 +16,8 @@ for the full design.
 - **Q&A**: any message that looks like a question about the server's topic
   gets answered automatically — no mention or command needed.
 - Server admins/moderators are exempt from punishment.
+- **Admin commands**: `/strikes`, `/resetstrikes`, `/refreshrules` — restricted
+  to members with the Moderate Members permission.
 
 ## Setup
 
@@ -23,9 +25,9 @@ for the full design.
    - New Application → Bot → enable the **Message Content Intent** and
      **Server Members Intent** under Privileged Gateway Intents.
    - Copy the bot token.
-2. **Invite it to your server** with these permissions: Read Messages/View
-   Channels, Send Messages, Moderate Members (timeout), Kick Members isn't
-   needed, Ban Members.
+2. **Invite it to your server** with the `bot` and `applications.commands`
+   scopes, and these permissions: Read Messages/View Channels, Send Messages,
+   Moderate Members (timeout), Ban Members.
 3. **Create a `#rules` channel** in your server. Write your server's rules
    and a description of what the server is about — the bot reads this
    channel's content as the source of truth for both moderation and Q&A.

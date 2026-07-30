@@ -60,6 +60,14 @@ On every punishment:
 - The same Claude call that checks for a violation also judges topical relevance and drafts an answer using the `#rules` channel content as the source of truth for "what this server is about."
 - Off-topic questions get `is_question: true` but the model is instructed to only set it when the question relates to the server's stated topic — off-topic chatter is left alone (`is_question: false`).
 
+## Admin commands
+
+Guild-scoped slash commands, registered on bot startup and on joining a new guild. Restricted via Discord's own permission system (`default_member_permissions: ModerateMembers`) and hidden from `@everyone` by default — server owners can still widen access via Discord's integration settings, same as any other bot command.
+
+- `/strikes user:<member>` — shows the member's current strike count, when the last offense was, and when it resets to 0.
+- `/resetstrikes user:<member>` — clears a member's strike history back to zero.
+- `/refreshrules` — forces an immediate re-read of `#rules` instead of waiting for the next edit event.
+
 ## Data model (SQLite)
 
 ```
