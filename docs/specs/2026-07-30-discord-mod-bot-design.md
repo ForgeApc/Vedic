@@ -49,9 +49,10 @@ Tracked per `(guild_id, user_id)` in SQLite: `strike_count`, `last_offense_at`.
 - Strike 2 → **24-hour timeout**
 - Strike 3 → **ban**
 
-On every punishment:
-- The bot DMs the user a short Claude-written explanation (which rule, why it was flagged) before applying the action. If the DM fails (e.g. DMs closed), the punishment still proceeds.
-- The bot posts a brief public notice in the channel where the violation occurred (e.g. "*user* was timed out for 5 minutes for violating server rules.") so the action is visible without needing a separate mod-log channel.
+On every punishment, in order:
+1. The bot DMs the user a short Claude-written explanation of which rule they broke and why. If the DM fails (e.g. DMs closed), this step is skipped silently — the next step still gets the word out.
+2. The bot **replies to the offending message itself** with that same explanation plus the resulting action (e.g. "*(explanation)* — user#1234 is being timed out for 5 minutes."), so it's visible in-channel, tied to the exact message, without needing a separate mod-log channel.
+3. Only after both of the above does the bot apply the actual timeout/ban — so the user (and channel) sees *why* before the action lands.
 
 ## Q&A behavior
 

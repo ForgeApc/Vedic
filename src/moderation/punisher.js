@@ -22,11 +22,15 @@ export async function punish(message, verdict) {
     strikeLabel: label,
   });
 
-  try {
-    await member.send(explanation);
-  } catch {
-    // DMs closed — proceed with the punishment anyway.
-  }
+  // Tell them what they did wrong — both privately and publicly, right on
+  // the offending message — before the punishment itself lands.
+  await member.send(explanation).catch(() => {
+    // DMs closed — the public reply below still gets the word out.
+  });
+
+  await message
+    .reply(`${explanation}\n\n${member.user.tag} is being ${label}.`)
+    .catch(() => {});
 
   if (strikeCount === 1) {
     await member.timeout(STRIKE_TIMEOUTS_MS[0], verdict.reason);
@@ -35,10 +39,6 @@ export async function punish(message, verdict) {
   } else {
     await member.ban({ reason: verdict.reason });
   }
-
-  await message.channel
-    .send(`${member.user.tag} was ${label} for violating server rules.`)
-    .catch(() => {});
 }
 
 export function isExempt(member) {
