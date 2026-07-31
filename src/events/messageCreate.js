@@ -1,4 +1,4 @@
-import { isAmbiguous, isSevereViolation } from "../moderation/keywordFilter.js";
+import { isSevereViolation } from "../moderation/keywordFilter.js";
 import { judgeMessage } from "../moderation/aiJudge.js";
 import { isExempt, punish } from "../moderation/punisher.js";
 import { getRulesText, isRulesChannel, refreshRules } from "../rulesCache.js";
@@ -23,8 +23,6 @@ export async function handleMessageCreate(message) {
     });
     return;
   }
-
-  if (!isAmbiguous(content)) return;
 
   const verdict = await judgeMessage({
     content,

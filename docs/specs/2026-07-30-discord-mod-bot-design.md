@@ -12,7 +12,7 @@ A Discord bot for a single-topic community server that:
 
 - **Runtime**: Node.js
 - **Discord**: discord.js v14
-- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`), model `claude-opus-5` by default — overridable via env var (e.g. to a cheaper/faster model) if an admin wants to trade accuracy for cost on a high-traffic server.
+- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`), model `claude-opus-5` by default — overridable via env var (e.g. to a cheaper/faster model) if an admin wants to trade accuracy for cost on a high-traffic server. Note: since every non-severe message now gets a Claude call (see Moderation pipeline), cost scales with message volume — worth watching on a busy server.
 - **Storage**: SQLite via `better-sqlite3` — single local file, no external DB service to run. Stores per-user offense history so counts survive bot restarts.
 
 ## Rules channel
@@ -26,15 +26,14 @@ A Discord bot for a single-topic community server that:
 
 Runs on every message in every channel except `#rules` itself. Skipped entirely for members with Manage Messages, Kick Members, or Ban Members permission (mods/admins are exempt).
 
-1. **Keyword filter (no API call)** — a static list of severe/obvious terms (slurs, explicit obvious profanity). A hit is instant, high-confidence "bad" — skips straight to step 3.
-2. **Ambiguous trigger check (no API call)** — a broader static list of milder trigger words/patterns (insults, aggressive phrasing) OR the message looking like a question (starts with a question word, or contains "?"). Either condition routes the message to step 2b. Messages matching neither list, and not offense-worthy nor question-shaped, are skipped entirely — no AI call, no action.
-3. **Combined Claude call** — for anything flagged as ambiguous or question-shaped, one call sends the message plus the current `#rules` text and asks for structured JSON:
+1. **Keyword filter (no API call)** — a static list of severe/obvious terms (slurs, explicit obvious profanity, self-harm encouragement). A hit is instant, high-confidence "bad" — skips straight to punishment without an AI call.
+2. **Combined Claude call** — every other non-empty message is sent to Claude along with the current `#rules` text and asks for structured JSON:
    ```json
    { "is_violation": bool, "severity": "mild"|"severe", "reason": string,
      "is_question": bool, "answer": string|null }
    ```
-   This keeps it to one API call per message that needs judgment, covering both moderation and Q&A in the same round trip.
-4. **Act on the verdict**:
+   This keeps it to one API call per message not caught by the keyword filter, covering both moderation and Q&A in the same round trip, and — critically — lets admins enforce *arbitrary* custom rules written in `#rules` (not just profanity), since Claude sees every message against the actual rules text. An earlier version pre-filtered which messages reached Claude using a generic trigger-word/question heuristic; that silently broke custom rules like "no saying hi" (which match neither heuristic) — removed in favor of always calling Claude once the fast keyword filter has ruled out the obvious case.
+3. **Act on the verdict**:
    - `is_violation: true` → go to punishment (below).
    - `is_question: true` and not a violation → bot replies in-channel with `answer`.
    - Neither → no action.
@@ -56,7 +55,7 @@ On every punishment:
 
 ## Q&A behavior
 
-- Passive: any message shaped like a question is eligible (see trigger check above) — no mention or slash command required.
+- Passive: any non-exempt, non-severe message is eligible — no mention or slash command required.
 - The same Claude call that checks for a violation also judges topical relevance and drafts an answer using the `#rules` channel content as the source of truth for "what this server is about."
 - Off-topic questions get `is_question: true` but the model is instructed to only set it when the question relates to the server's stated topic — off-topic chatter is left alone (`is_question: false`).
 
@@ -67,6 +66,7 @@ Guild-scoped slash commands, registered on bot startup and on joining a new guil
 - `/strikes user:<member>` — shows the member's current strike count, when the last offense was, and when it resets to 0.
 - `/resetstrikes user:<member>` — clears a member's strike history back to zero.
 - `/refreshrules` — forces an immediate re-read of `#rules` instead of waiting for the next edit event.
+- `/ai question:<text>` — **not permission-restricted** (available to every member). A direct fallback to the passive Q&A: the user explicitly asks, and Claude answers using the `#rules`/topic content as context, without the topical-relevance gate the passive path applies (an explicit ask doesn't need to prove it's on-topic).
 - `/addrole user:<member> role:<role>` / `/removerole user:<member> role:<role>` — restricted via `ManageRoles` instead of `ModerateMembers`. Both refuse to touch `@everyone` or integration-managed roles, and enforce role hierarchy on both sides: the invoker can't grant/remove a role at or above their own highest role (unless they're the guild owner), and the bot refuses if the target role is at or above its own highest role (Discord's API would reject it anyway — this gives a clear error instead of a silent failure).
 
 ## Data model (SQLite)

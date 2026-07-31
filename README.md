@@ -18,6 +18,8 @@ for the full design.
 - Server admins/moderators are exempt from punishment.
 - **Admin commands**: `/strikes`, `/resetstrikes`, `/refreshrules` (require
   Moderate Members), and `/addrole`, `/removerole` (require Manage Roles).
+- **`/ai question:<text>`** — open to everyone. A direct way to ask the bot
+  something if you don't want to rely on the passive detection.
 
 ## Setup
 

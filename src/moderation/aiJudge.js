@@ -91,3 +91,34 @@ export async function explainPunishment({ rulesText, violationReason, severity, 
   const textBlock = response.content.find((block) => block.type === "text");
   return textBlock?.text ?? `You were ${strikeLabel} for violating server rules.`;
 }
+
+/**
+ * Directly answers a user-submitted question (via /ai), grounded in the
+ * server's #rules/topic content. Unlike the passive Q&A path, this doesn't
+ * gate on topical relevance — the user explicitly asked, so it just answers.
+ */
+export async function askQuestion({ question, rulesText }) {
+  const response = await client.messages.create({
+    model: config.moderationModel,
+    max_tokens: 1024,
+    thinking: { type: "disabled" },
+    output_config: { effort: "low" },
+    system:
+      "You answer questions for a Discord server. Use the #rules channel content below " +
+      "(which describes what the server is about) as context when relevant. Answer " +
+      "directly and concisely.",
+    messages: [
+      {
+        role: "user",
+        content: `#rules channel content:\n"""\n${rulesText || "(no rules configured)"}\n"""\n\nQuestion: ${question}`,
+      },
+    ],
+  });
+
+  if (response.stop_reason === "refusal") {
+    return "I can't help with that one.";
+  }
+
+  const textBlock = response.content.find((block) => block.type === "text");
+  return textBlock?.text ?? "I couldn't come up with an answer to that.";
+}
