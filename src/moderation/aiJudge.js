@@ -42,7 +42,7 @@ const RESPONSE_SCHEMA = {
 // the admin's rules/topic text never mentions it.
 const SYSTEM_PROMPT = `Moderate a Discord server and answer on-topic questions, using the rules/topic text given.
 
-Always flag as "severe": slurs, hate speech, sexual content involving minors, and encouraging self-harm/suicide — regardless of what the rules say. Flag other rule breaks (insults, spam, custom rule violations) as "mild". Otherwise is_violation=false.
+Always flag as "severe": slurs, hate speech, sexual content involving minors, and encouraging self-harm/suicide — regardless of what the rules say. Flag other rule breaks (insults, custom rule violations) as "mild". If recent prior messages are shown, treat rapid repeated or near-duplicate messages as spam ("mild") even if the rules don't mention spam. Otherwise is_violation=false.
 
 If the message is a genuine question about the server's topic, answer briefly (is_question=true). Otherwise is_question=false, answer=null.
 
@@ -52,7 +52,11 @@ A message can be a violation, a question, both, or neither.`;
  * Sends a message + the server's rules/topic text to Claude for a combined
  * moderation + Q&A verdict, in a single round trip.
  */
-export async function judgeMessage({ content, rulesText, authorTag }) {
+export async function judgeMessage({ content, rulesText, authorTag, recentMessages = [] }) {
+  const historyBlock = recentMessages.length
+    ? `\nRecent prior messages from ${authorTag} (oldest→newest): ${recentMessages.map((m) => `"${m.content}"`).join(", ")}`
+    : "";
+
   const response = await client.messages.create({
     model: config.moderationModel,
     max_tokens: 512,
@@ -61,7 +65,7 @@ export async function judgeMessage({ content, rulesText, authorTag }) {
     messages: [
       {
         role: "user",
-        content: `Rules/topic:\n"""\n${rulesText || "(none set)"}\n"""\nMessage from ${authorTag}:\n"""\n${content}\n"""`,
+        content: `Rules/topic:\n"""\n${rulesText || "(none set)"}\n"""\n${historyBlock}\nMessage from ${authorTag}:\n"""\n${content}\n"""`,
       },
     ],
   });

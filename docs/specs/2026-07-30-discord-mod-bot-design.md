@@ -27,14 +27,17 @@ A Discord bot for a single-topic community server that:
 
 Two independent layers, so a bad admin config (or none at all) can't disable basic safety:
 1. **Keyword filter** (`src/moderation/keywordFilter.js`) — a static blocklist (`bad-words` package + a short self-harm-phrase list) that always triggers instant punishment, with zero dependency on the `#ai-prompt` content.
-2. **System prompt baseline** — the Claude call is explicitly instructed to always flag slurs, hate speech, sexual content involving minors, and self-harm encouragement as `"severe"`, *regardless of what the rules/topic text says* — so even an empty or incomplete `#ai-prompt` channel still has this floor.
+2. **System prompt baseline** — the Claude call is explicitly instructed to always flag slurs, hate speech, sexual content involving minors, and self-harm encouragement as `"severe"`, *regardless of what the rules/topic text says* — so even an empty or incomplete `#ai-prompt` channel still has this floor. It's also told to treat rapid repeated/near-duplicate messages as spam (`"mild"`) even when the rules text says nothing about spam.
+
+Spam detection (repeated-message flood) is a third, related floor — see step 2 of the moderation pipeline below — that also doesn't depend on `#ai-prompt` content.
 
 ## Moderation pipeline (per message)
 
 Runs on every message in every channel except `#ai-prompt` itself, for every member — **including admins/mods and the server owner** (per explicit request; the original design exempted staff, but that made testing confusing and was changed). Note Discord itself still hard-blocks two cases regardless of this bot's logic: bots can never act on the guild owner, and can never act on a member whose highest role is at or above the bot's own highest role — `punish()` catches that failure and replies explaining why the punishment couldn't be applied, rather than crashing silently.
 
 1. **Keyword filter (no API call)** — a static list of severe/obvious terms (slurs, explicit obvious profanity, self-harm encouragement). A hit is instant, high-confidence "bad" — skips straight to punishment without an AI call.
-2. **Combined Claude call** — every other non-empty message is sent to Claude along with the current `#ai-prompt` text and asks for structured JSON:
+2. **Repeated-message flood check (no API call)** — `src/moderation/messageHistory.js` keeps an in-memory rolling window (last 5 messages) per `(guild_id, user_id)`, not persisted. If a user's last 3 messages are identical (case/whitespace-insensitive) and all landed within a 10-second window, that's treated as spam and punished immediately, same tier as the keyword filter — a single message viewed in isolation can't catch this, so it needs the short history buffer.
+3. **Combined Claude call** — every other non-empty message is sent to Claude along with the current `#ai-prompt` text and the user's recent prior messages (for context on non-identical but still spammy flooding), and asks for structured JSON:
    ```json
    { "is_violation": bool, "severity": "mild"|"severe", "reason": string,
      "is_question": bool, "answer": string|null }

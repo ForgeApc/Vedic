@@ -2,6 +2,7 @@ import { isSevereViolation } from "../moderation/keywordFilter.js";
 import { judgeMessage } from "../moderation/aiJudge.js";
 import { punish } from "../moderation/punisher.js";
 import { getRulesText, isRulesChannel, refreshRules } from "../rulesCache.js";
+import { recordMessage, isRepeatedFlood } from "../moderation/messageHistory.js";
 
 export async function handleMessageCreate(message) {
   if (message.author.bot || !message.guild) return;
@@ -29,6 +30,8 @@ export async function handleMessageCreate(message) {
 
   console.log(`[moderation] Evaluating message from ${message.author.tag} in #${message.channel.name}: "${content}"`);
 
+  const history = recordMessage(message.guild.id, message.author.id, content);
+
   if (isSevereViolation(content)) {
     console.log("[moderation] Severe keyword match — punishing immediately.");
     await punish(message, {
@@ -38,10 +41,20 @@ export async function handleMessageCreate(message) {
     return;
   }
 
+  if (isRepeatedFlood(history)) {
+    console.log("[moderation] Repeated-message flood — punishing immediately.");
+    await punish(message, {
+      severity: "mild",
+      reason: "Repeated the same message multiple times in a row (spam).",
+    });
+    return;
+  }
+
   const verdict = await judgeMessage({
     content,
     rulesText: getRulesText(message.guild.id),
     authorTag: message.author.tag,
+    recentMessages: history.slice(0, -1),
   });
 
   console.log("[moderation] Verdict:", verdict);
