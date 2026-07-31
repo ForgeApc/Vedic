@@ -12,7 +12,7 @@ A Discord bot for a single-topic community server that:
 
 - **Runtime**: Node.js
 - **Discord**: discord.js v14
-- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`), model `claude-opus-5` by default — overridable via env var (e.g. to a cheaper/faster model) if an admin wants to trade accuracy for cost on a high-traffic server. Note: since every non-severe message now gets a Claude call (see Moderation pipeline), cost scales with message volume — worth watching on a busy server.
+- **AI**: Anthropic Claude API (`@anthropic-ai/sdk`), model `claude-haiku-4-5` by default (fast/cheap, appropriate since every non-severe message now gets a Claude call — see Moderation pipeline) — overridable via `MODERATION_MODEL` for servers that want higher accuracy from an Opus/Sonnet-tier model instead. Request construction is model-aware: Haiku 4.5 doesn't support `output_config.effort` or adaptive/disabled thinking the way Opus/Sonnet 5-tier models do, so `src/moderation/aiJudge.js` builds different request params depending on which model is configured.
 - **Storage**: SQLite via `better-sqlite3` — single local file, no external DB service to run. Stores per-user offense history so counts survive bot restarts.
 
 ## Rules channel
@@ -84,7 +84,7 @@ Rules text is cached in memory only (not persisted) — cheap to re-read from Di
 Environment variables (`.env`, see `.env.example`):
 - `DISCORD_BOT_TOKEN`
 - `ANTHROPIC_API_KEY`
-- `MODERATION_MODEL` (optional, defaults to `claude-opus-5`)
+- `MODERATION_MODEL` (optional, defaults to `claude-haiku-4-5`)
 
 ## Out of scope for v1 (YAGNI)
 

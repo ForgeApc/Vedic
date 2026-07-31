@@ -3,6 +3,26 @@ import { config } from "../config.js";
 
 const client = new Anthropic({ apiKey: config.anthropicApiKey });
 
+// Haiku 4.5 (and other older models) don't support output_config.effort
+// (errors) or adaptive/disabled thinking (thinking is just off by default
+// unless explicitly enabled with a token budget). Opus/Sonnet 5-tier models
+// support both. Build request params accordingly so MODERATION_MODEL can be
+// swapped without breaking the API calls.
+const isLegacyModel = config.moderationModel.includes("haiku");
+
+function extraParams(schema) {
+  const format = schema ? { format: { type: "json_schema", schema } } : undefined;
+
+  if (isLegacyModel) {
+    return format ? { output_config: format } : {};
+  }
+
+  return {
+    thinking: { type: "disabled" },
+    output_config: format ? { effort: "low", ...format } : { effort: "low" },
+  };
+}
+
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
@@ -43,13 +63,7 @@ export async function judgeMessage({ content, rulesText, authorTag }) {
   const response = await client.messages.create({
     model: config.moderationModel,
     max_tokens: 1024,
-    // Classification + short-answer task: disable thinking and keep effort
-    // low for latency, since this runs on a large share of server messages.
-    thinking: { type: "disabled" },
-    output_config: {
-      effort: "low",
-      format: { type: "json_schema", schema: RESPONSE_SCHEMA },
-    },
+    ...extraParams(RESPONSE_SCHEMA),
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -75,8 +89,7 @@ export async function explainPunishment({ rulesText, violationReason, severity, 
   const response = await client.messages.create({
     model: config.moderationModel,
     max_tokens: 300,
-    thinking: { type: "disabled" },
-    output_config: { effort: "low" },
+    ...extraParams(),
     system:
       "You write short, direct, non-judgmental explanations to Discord users about " +
       "why they were moderated. Reference the specific rule they broke. Keep it under 4 sentences.",
@@ -101,8 +114,7 @@ export async function askQuestion({ question, rulesText }) {
   const response = await client.messages.create({
     model: config.moderationModel,
     max_tokens: 1024,
-    thinking: { type: "disabled" },
-    output_config: { effort: "low" },
+    ...extraParams(),
     system:
       "You answer questions for a Discord server. Use the #rules channel content below " +
       "(which describes what the server is about) as context when relevant. Answer " +

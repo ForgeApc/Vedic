@@ -11,7 +11,7 @@ function required(name) {
 export const config = {
   discordToken: required("DISCORD_BOT_TOKEN"),
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
-  moderationModel: process.env.MODERATION_MODEL || "claude-opus-5",
+  moderationModel: process.env.MODERATION_MODEL || "claude-haiku-4-5",
 };
 
 export const RULES_CHANNEL_NAME = "rules";
