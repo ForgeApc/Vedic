@@ -32,19 +32,23 @@ export async function punish(message, verdict) {
     .reply(`${explanation}\n\n${member.user.tag} is being ${label}.`)
     .catch(() => {});
 
-  if (strikeCount === 1) {
-    await member.timeout(STRIKE_TIMEOUTS_MS[0], verdict.reason);
-  } else if (strikeCount === 2) {
-    await member.timeout(STRIKE_TIMEOUTS_MS[1], verdict.reason);
-  } else {
-    await member.ban({ reason: verdict.reason });
+  try {
+    if (strikeCount === 1) {
+      await member.timeout(STRIKE_TIMEOUTS_MS[0], verdict.reason);
+    } else if (strikeCount === 2) {
+      await member.timeout(STRIKE_TIMEOUTS_MS[1], verdict.reason);
+    } else {
+      await member.ban({ reason: verdict.reason });
+    }
+  } catch (error) {
+    // Discord hard-blocks bots from acting on the server owner, and on
+    // anyone with a role equal to or above the bot's own highest role —
+    // both are now reachable since moderation applies to everyone.
+    console.error(`Failed to apply punishment to ${member.user.tag}:`, error);
+    await message
+      .reply(
+        "I flagged that, but couldn't actually apply the punishment — Discord doesn't let bots act on the server owner, or on members with a role equal to or higher than mine."
+      )
+      .catch(() => {});
   }
-}
-
-export function isExempt(member) {
-  return (
-    member.permissions.has("ManageMessages") ||
-    member.permissions.has("KickMembers") ||
-    member.permissions.has("BanMembers")
-  );
 }

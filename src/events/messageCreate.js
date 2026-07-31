@@ -1,6 +1,6 @@
 import { isSevereViolation } from "../moderation/keywordFilter.js";
 import { judgeMessage } from "../moderation/aiJudge.js";
-import { isExempt, punish } from "../moderation/punisher.js";
+import { punish } from "../moderation/punisher.js";
 import { getRulesText, isRulesChannel, refreshRules } from "../rulesCache.js";
 
 export async function handleMessageCreate(message) {
@@ -11,7 +11,7 @@ export async function handleMessageCreate(message) {
     return;
   }
 
-  if (!message.member || isExempt(message.member)) return;
+  if (!message.member) return;
 
   const content = message.content;
   if (!content) return;

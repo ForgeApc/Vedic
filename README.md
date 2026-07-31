@@ -10,12 +10,17 @@ for the full design.
 ## What it does
 
 - **Moderation**: a fast keyword filter catches obvious violations instantly;
-  anything ambiguous is sent to Claude along with the `#rules` content for a
-  judgment call. Escalation: 5-minute timeout → 24-hour timeout → ban, with a
-  30-day reset on good behavior. The offender gets a DM explaining why.
+  every other message is sent to Claude along with the `#rules` content for a
+  judgment call, so custom rules work too, not just profanity. Escalation:
+  5-minute timeout → 24-hour timeout → ban, with a 30-day reset on good
+  behavior. The offender gets a DM and an in-channel reply explaining why
+  before the punishment lands.
 - **Q&A**: any message that looks like a question about the server's topic
   gets answered automatically — no mention or command needed.
-- Server admins/moderators are exempt from punishment.
+- Applies to **everyone**, including admins/mods and the server owner — there
+  is no staff exemption. (Discord itself still refuses to let any bot act on
+  the guild owner, or on a member whose role outranks the bot's own; the bot
+  tells you when that happens instead of failing silently.)
 - **Admin commands**: `/strikes`, `/resetstrikes`, `/refreshrules` (require
   Moderate Members), and `/addrole`, `/removerole` (require Manage Roles).
 - **`/ai question:<text>`** — open to everyone. A direct way to ask the bot

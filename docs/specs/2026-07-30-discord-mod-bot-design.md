@@ -24,7 +24,7 @@ A Discord bot for a single-topic community server that:
 
 ## Moderation pipeline (per message)
 
-Runs on every message in every channel except `#rules` itself. Skipped entirely for members with Manage Messages, Kick Members, or Ban Members permission (mods/admins are exempt).
+Runs on every message in every channel except `#rules` itself, for every member — **including admins/mods and the server owner** (per explicit request; the original design exempted staff, but that made testing confusing and was changed). Note Discord itself still hard-blocks two cases regardless of this bot's logic: bots can never act on the guild owner, and can never act on a member whose highest role is at or above the bot's own highest role — `punish()` catches that failure and replies explaining why the punishment couldn't be applied, rather than crashing silently.
 
 1. **Keyword filter (no API call)** — a static list of severe/obvious terms (slurs, explicit obvious profanity, self-harm encouragement). A hit is instant, high-confidence "bad" — skips straight to punishment without an AI call.
 2. **Combined Claude call** — every other non-empty message is sent to Claude along with the current `#rules` text and asks for structured JSON:
@@ -56,7 +56,7 @@ On every punishment, in order:
 
 ## Q&A behavior
 
-- Passive: any non-exempt, non-severe message is eligible — no mention or slash command required.
+- Passive: any non-severe message is eligible — no mention or slash command required.
 - The same Claude call that checks for a violation also judges topical relevance and drafts an answer using the `#rules` channel content as the source of truth for "what this server is about."
 - Off-topic questions get `is_question: true` but the model is instructed to only set it when the question relates to the server's stated topic — off-topic chatter is left alone (`is_question: false`).
 
