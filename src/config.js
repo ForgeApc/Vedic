@@ -14,7 +14,9 @@ export const config = {
   moderationModel: process.env.MODERATION_MODEL || "claude-haiku-4-5",
 };
 
-export const RULES_CHANNEL_NAME = "rules";
+// Private, auto-created channel (owner + bot only) where the AI's rules and
+// topic config live — not a public channel members can read.
+export const RULES_CHANNEL_NAME = "ai-prompt";
 
 export const STRIKE_TIMEOUTS_MS = [5 * 60 * 1000, 24 * 60 * 60 * 1000];
 export const OFFENSE_RESET_MS = 30 * 24 * 60 * 60 * 1000;

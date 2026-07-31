@@ -36,24 +36,17 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 };
 
-const SYSTEM_PROMPT = `You moderate a Discord server and answer on-topic questions.
+// Kept brief: shorter prompts mean fewer tokens and faster responses, which
+// matters since this runs on nearly every message. Baseline severe-language
+// rule is built in here (not just the keyword filter) so it holds even if
+// the admin's rules/topic text never mentions it.
+const SYSTEM_PROMPT = `Moderate a Discord server and answer on-topic questions, using the rules/topic text given.
 
-You will be given the server's #rules channel content (which also describes what
-the server is about) and a single message to evaluate.
+Always flag as "severe": slurs, hate speech, sexual content involving minors, and encouraging self-harm/suicide — regardless of what the rules say. Flag other rule breaks (insults, spam, custom rule violations) as "mild". Otherwise is_violation=false.
 
-Judge two independent things about the message:
+If the message is a genuine question about the server's topic, answer briefly (is_question=true). Otherwise is_question=false, answer=null.
 
-1. Moderation: does it violate the rules above? Consider severe things (slurs,
-   explicit harassment, encouraging self-harm) as "severe", and lesser rule
-   violations (insults, mild harassment, spam) as "mild". If it's fine, set
-   is_violation to false.
-2. Q&A: is this message a genuine question about the server's stated topic?
-   If so, write a short, accurate answer grounded in the rules/topic text and
-   general knowledge. If it's off-topic, rhetorical, or not actually a
-   question, set is_question to false and answer to null.
-
-A message can be a violation and not a question, a question and not a
-violation, both, or neither.`;
+A message can be a violation, a question, both, or neither.`;
 
 /**
  * Sends a message + the server's rules/topic text to Claude for a combined
@@ -62,13 +55,13 @@ violation, both, or neither.`;
 export async function judgeMessage({ content, rulesText, authorTag }) {
   const response = await client.messages.create({
     model: config.moderationModel,
-    max_tokens: 1024,
+    max_tokens: 512,
     ...extraParams(RESPONSE_SCHEMA),
     system: SYSTEM_PROMPT,
     messages: [
       {
         role: "user",
-        content: `#rules channel content:\n"""\n${rulesText || "(no rules configured)"}\n"""\n\nMessage from ${authorTag}:\n"""\n${content}\n"""`,
+        content: `Rules/topic:\n"""\n${rulesText || "(none set)"}\n"""\nMessage from ${authorTag}:\n"""\n${content}\n"""`,
       },
     ],
   });
@@ -88,15 +81,15 @@ export async function judgeMessage({ content, rulesText, authorTag }) {
 export async function explainPunishment({ rulesText, violationReason, severity, strikeLabel }) {
   const response = await client.messages.create({
     model: config.moderationModel,
-    max_tokens: 300,
+    max_tokens: 150,
     ...extraParams(),
     system:
-      "You write short, direct, non-judgmental explanations to Discord users about " +
-      "why they were moderated. Reference the specific rule they broke. Keep it under 4 sentences.",
+      "Write a short (2-3 sentence), direct, non-judgmental explanation of why this " +
+      "Discord user was moderated, referencing the specific rule broken.",
     messages: [
       {
         role: "user",
-        content: `#rules channel content:\n"""\n${rulesText || "(no rules configured)"}\n"""\n\nThis user received: ${strikeLabel}.\nViolation severity: ${severity}.\nWhy it was flagged: ${violationReason}\n\nWrite the DM explanation.`,
+        content: `Rules/topic:\n"""\n${rulesText || "(none set)"}\n"""\nAction: ${strikeLabel} (${severity}). Reason: ${violationReason}`,
       },
     ],
   });
@@ -113,16 +106,13 @@ export async function explainPunishment({ rulesText, violationReason, severity, 
 export async function askQuestion({ question, rulesText }) {
   const response = await client.messages.create({
     model: config.moderationModel,
-    max_tokens: 1024,
+    max_tokens: 512,
     ...extraParams(),
-    system:
-      "You answer questions for a Discord server. Use the #rules channel content below " +
-      "(which describes what the server is about) as context when relevant. Answer " +
-      "directly and concisely.",
+    system: "Answer the question directly and concisely, using the server context below when relevant.",
     messages: [
       {
         role: "user",
-        content: `#rules channel content:\n"""\n${rulesText || "(no rules configured)"}\n"""\n\nQuestion: ${question}`,
+        content: `Rules/topic:\n"""\n${rulesText || "(none set)"}\n"""\nQuestion: ${question}`,
       },
     ],
   });

@@ -1,4 +1,4 @@
-import { refreshRules } from "../rulesCache.js";
+import { ensureAiPromptChannel, refreshRules } from "../rulesCache.js";
 import { commandData } from "../commands/index.js";
 
 async function registerCommands(guild) {
@@ -9,16 +9,20 @@ async function registerCommands(guild) {
   }
 }
 
+async function setUpGuild(guild) {
+  await ensureAiPromptChannel(guild);
+  await refreshRules(guild);
+  await registerCommands(guild);
+}
+
 export async function handleReady(client) {
   console.log(`Logged in as ${client.user.tag}`);
 
   for (const guild of client.guilds.cache.values()) {
-    await refreshRules(guild);
-    await registerCommands(guild);
+    await setUpGuild(guild);
   }
 }
 
 export async function handleGuildCreate(guild) {
-  await refreshRules(guild);
-  await registerCommands(guild);
+  await setUpGuild(guild);
 }
